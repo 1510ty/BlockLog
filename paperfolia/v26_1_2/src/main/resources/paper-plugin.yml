@@ -1,0 +1,7 @@
+name: "BlockLog"
+version: "${version}"
+main: com.mc1510ty.BlockLog.paperfolia.v26_1_2.Main
+author: "1510ty"
+description: "Simple Block Logging Logging Plugin, Async, Fast And Free."
+api-version: "26.1.2"
+folia-supported: true
