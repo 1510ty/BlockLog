@@ -33,8 +33,6 @@ public class BlockListener implements Listener {
         Player p = e.getPlayer();
         UUID uuid = p.getUniqueId();
 
-
-
         // 調査モード中かチェック
         if (!plugin.getInspectors().contains(uuid)) {
             // 通常時のログ記録（チェスト開閉など）
@@ -42,7 +40,7 @@ public class BlockListener implements Listener {
                 Material type = e.getClickedBlock().getType();
                 if (Tag.BUTTONS.isTagged(type) || type == Material.LEVER || Tag.DOORS.isTagged(type) ||
                         Tag.FENCE_GATES.isTagged(type) || type == Material.CHEST || type == Material.BARREL) {
-                    logAsync(p, e.getClickedBlock(), 4);
+                    logAsync(p, e.getClickedBlock(), 1);
                 }
             }
             return;
@@ -50,33 +48,14 @@ public class BlockListener implements Listener {
 
         // --- ここから調査モード (inspect) の処理 ---
         if (e.getClickedBlock() == null) return;
-
-        // 調査時は本来のアクション（破壊・設置・開閉）をキャンセル
         e.setCancelled(true);
 
+        // 論理モードの決定 (左クリックなら破壊/設置モード(0)、右なら操作モード(1))
+        int viewMode = (e.getAction() == Action.LEFT_CLICK_BLOCK) ? 0 : 1;
         Block b = e.getClickedBlock();
-        String world = b.getWorld().getName();
-        int x = b.getX(), y = b.getY(), z = b.getZ();
-        int initialPage = 0; // 最初のページ番号を定義
 
-
-        // アクションの選別 (左: 設置破壊, 右: 操作系)
-        int[] actions = (e.getAction() == Action.LEFT_CLICK_BLOCK) ? new int[]{0, 1} : new int[]{4, 5};
-
-        // 非同期検索の開始
-        plugin.getDatabase().getLogs(world, x, y, z, actions, initialPage).thenAccept(logs -> {
-            p.getScheduler().execute(plugin, () -> {
-                if (logs.isEmpty()) {
-                    p.sendMessage("[BlockLog] 履歴は見つかりませんでした");
-                } else {
-                    p.sendMessage("[BlockLog] 調査結果 (" + x + ", " + y + ", " + z + "):");
-                    for (String msg : logs) {
-                        p.sendMessage(msg);
-                    }
-                    plugin.sendNextButton(p, x, y, z, initialPage + 1);
-                }
-            }, null, 1L);
-        });
+        // Mainクラスの一元化メソッドを呼び出す
+        plugin.showLogPage(p, b.getX(), b.getY(), b.getZ(), viewMode, 0);
     }
 
     private void logAsync(Player p, Block b, int action) {

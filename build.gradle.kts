@@ -7,7 +7,7 @@ val buildTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd
 version = if (!gitCommit.isNullOrBlank()) {
     "$buildTime-$gitCommit"
 } else {
-    "0.0.4"
+    "0.0.6"
 }
 
 group = "com.mc1510ty"

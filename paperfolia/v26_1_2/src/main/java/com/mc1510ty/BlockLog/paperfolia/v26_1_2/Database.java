@@ -3,6 +3,7 @@ package com.mc1510ty.BlockLog.paperfolia.v26_1_2;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.Level;
 
@@ -63,23 +64,24 @@ public class Database {
         } catch (SQLException e) { e.printStackTrace(); }
     }
 
-    public CompletableFuture<List<String>> getLogs(String world, int x, int y, int z, int[] actions, int page) {
+    public CompletableFuture<List<String>> getLogs(String world, int x, int y, int z, int viewMode, int page) {
         return CompletableFuture.supplyAsync(() -> {
             List<String> logs = new ArrayList<>();
             int offset = page * 5;
-            String placeholders = java.util.stream.IntStream.range(0, actions.length)
-                    .mapToObj(i -> "?").collect(java.util.stream.Collectors.joining(","));
 
-            // OFFSETを追加して続きを取得
-            String sql = "SELECT time, uuid, action, block FROM block_logs WHERE world = ? AND x = ? AND y = ? AND z = ? AND action IN (" + placeholders + ") ORDER BY id DESC LIMIT 5 OFFSET ?";
+            // 表示モードからDBの物理アクション値へのマッピング
+            // 0: 破壊(0) & 設置(1) | 1: 操作(2)
+            String actionCondition = (viewMode == 0) ? "action IN (0, 1)" : "action = 2";
+
+            String sql = "SELECT time, uuid, action, block FROM block_logs WHERE world = ? AND x = ? AND y = ? AND z = ? AND "
+                    + actionCondition + " ORDER BY id DESC LIMIT 5 OFFSET ?";
 
             try (PreparedStatement ps = connection.prepareStatement(sql)) {
                 ps.setString(1, world);
                 ps.setInt(2, x);
                 ps.setInt(3, y);
                 ps.setInt(4, z);
-                for (int i = 0; i < actions.length; i++) ps.setInt(5 + i, actions[i]);
-                ps.setInt(5 + actions.length, offset);
+                ps.setInt(5, offset);
 
                 try (ResultSet rs = ps.executeQuery()) {
                     while (rs.next()) {
@@ -87,21 +89,18 @@ public class Database {
                         String uuid = rs.getString("uuid");
                         int act = rs.getInt("action");
                         String block = rs.getString("block").replace("minecraft:", "");
+                        String name = org.bukkit.Bukkit.getOfflinePlayer(UUID.fromString(uuid)).getName();
 
-                        String name = org.bukkit.Bukkit.getOfflinePlayer(java.util.UUID.fromString(uuid)).getName();
                         String actName = switch (act) {
-                            case 0 -> "[破壊]";
-                            case 1 -> "[設置]";
-                            case 4 -> "[操作]";
-                            default -> "[不明]";
+                            case 0 -> "§c[破壊]§f";
+                            case 1 -> "§a[設置]§f";
+                            case 2 -> "§e[操作]§f";
+                            default -> "§7[不明]§f";
                         };
-
-                        logs.add(String.format("[%s] %s: %s %s", time, (name != null ? name : "不明"), actName, block));
+                        logs.add(String.format("§8[%s] §b%s§f: %s §7%s", time, (name != null ? name : "不明"), actName, block));
                     }
                 }
-            } catch (SQLException e) {
-                plugin.getLogger().warning("Query failed: " + e.getMessage());
-            }
+            } catch (SQLException e) { plugin.getLogger().warning("SQL Error: " + e.getMessage()); }
             return logs;
         });
     }
