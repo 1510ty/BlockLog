@@ -40,7 +40,7 @@ public class BlockListener implements Listener {
                 Material type = e.getClickedBlock().getType();
                 if (Tag.BUTTONS.isTagged(type) || type == Material.LEVER || Tag.DOORS.isTagged(type) ||
                         Tag.FENCE_GATES.isTagged(type) || type == Material.CHEST || type == Material.BARREL) {
-                    logAsync(p, e.getClickedBlock(), 1);
+                    logAsync(p, e.getClickedBlock(), 2); // ちゃんと操作(2)になってる！OK！
                 }
             }
             return;
@@ -50,12 +50,12 @@ public class BlockListener implements Listener {
         if (e.getClickedBlock() == null) return;
         e.setCancelled(true);
 
-        // 論理モードの決定 (左クリックなら破壊/設置モード(0)、右なら操作モード(1))
+        // 論理モードの決定 (左クリックなら建築ログ、右なら操作ログ)
         int viewMode = (e.getAction() == Action.LEFT_CLICK_BLOCK) ? 0 : 1;
         Block b = e.getClickedBlock();
 
-        // Mainクラスの一元化メソッドを呼び出す
-        plugin.showLogPage(p, b.getX(), b.getY(), b.getZ(), viewMode, 0);
+        // ワールド名を追加して呼び出し！
+        plugin.showLogPage(p, b.getWorld().getName(), b.getX(), b.getY(), b.getZ(), viewMode, 0);
     }
 
     private void logAsync(Player p, Block b, int action) {

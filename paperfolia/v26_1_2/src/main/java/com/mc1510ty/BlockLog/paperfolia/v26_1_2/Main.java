@@ -2,6 +2,7 @@ package com.mc1510ty.BlockLog.paperfolia.v26_1_2;
 
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
@@ -34,8 +35,10 @@ public class Main extends JavaPlugin {
     }
 
     // 表示ロジックの一元化メソッド
-    public void showLogPage(Player player, int x, int y, int z, int viewMode, int page) {
-        database.getLogs(player.getWorld().getName(), x, y, z, viewMode, page)
+    // 第2引数に worldName を追加
+    public void showLogPage(Player player, String worldName, int x, int y, int z, int viewMode, int page) {
+        // プレイヤーの現在地ではなく、引数の worldName を使用
+        database.getLogs(worldName, x, y, z, viewMode, page)
                 .thenAccept(logs -> {
                     player.getScheduler().execute(this, () -> {
                         if (logs.isEmpty()) {
@@ -43,13 +46,14 @@ public class Main extends JavaPlugin {
                             return;
                         }
                         String modeName = (viewMode == 0) ? "破壊/設置" : "操作";
-                        player.sendMessage("§b[HS] §f" + modeName + "履歴 (" + x + "," + y + "," + z + ") " + (page + 1) + "P:");
+                        // メッセージにもワールド名を入れておくと親切
+                        player.sendMessage("§b[HS] §e" + worldName + " §f" + modeName + "履歴 (" + x + "," + y + "," + z + ") " + (page + 1) + "P:");
                         logs.forEach(player::sendMessage);
 
-                        // 「次を表示」ボタン (viewMode を維持して生成)
+                        // クリックイベントのコマンドに worldName を追加！
                         Component nextBtn = Component.text("[ 次の5件を表示 ]")
                                 .color(NamedTextColor.AQUA)
-                                .clickEvent(ClickEvent.runCommand("/hs p " + x + " " + y + " " + z + " " + viewMode + " " + (page + 1)));
+                                .clickEvent(ClickEvent.runCommand("/hs p " + worldName + " " + x + " " + y + " " + z + " " + viewMode + " " + (page + 1)));
                         player.sendMessage(nextBtn);
                     }, null, 1L);
                 });
@@ -71,19 +75,26 @@ public class Main extends JavaPlugin {
                 }))
                 // 内部・手動共用表示コマンド: /hs p <x> <y> <z> <viewMode> <page>
                 .then(Commands.literal("p")
-                        .then(Commands.argument("x", IntegerArgumentType.integer())
-                                .then(Commands.argument("y", IntegerArgumentType.integer())
-                                        .then(Commands.argument("z", IntegerArgumentType.integer())
-                                                .then(Commands.argument("m", IntegerArgumentType.integer())
-                                                        .then(Commands.argument("p", IntegerArgumentType.integer())
-                                                                .executes(ctx -> {
-                                                                    if (!(ctx.getSource().getSender() instanceof Player p)) return 0;
-                                                                    showLogPage(p, ctx.getArgument("x", int.class), ctx.getArgument("y", int.class),
-                                                                            ctx.getArgument("z", int.class), ctx.getArgument("m", int.class),
-                                                                            ctx.getArgument("p", int.class));
-                                                                    return Command.SINGLE_SUCCESS;
-                                                                })))))));
+                        .then(Commands.argument("world", StringArgumentType.string()) // ワールド名を最初に追加
+                                .then(Commands.argument("x", IntegerArgumentType.integer())
+                                        .then(Commands.argument("y", IntegerArgumentType.integer())
+                                                .then(Commands.argument("z", IntegerArgumentType.integer())
+                                                        .then(Commands.argument("m", IntegerArgumentType.integer())
+                                                                .then(Commands.argument("p", IntegerArgumentType.integer())
+                                                                        .executes(ctx -> {
+                                                                            if (!(ctx.getSource().getSender() instanceof Player p)) return 0;
 
+                                                                            // ワールド名を取得
+                                                                            String worldName = ctx.getArgument("world", String.class);
+
+                                                                            showLogPage(p, worldName, // 引数に追加
+                                                                                    ctx.getArgument("x", int.class),
+                                                                                    ctx.getArgument("y", int.class),
+                                                                                    ctx.getArgument("z", int.class),
+                                                                                    ctx.getArgument("m", int.class),
+                                                                                    ctx.getArgument("p", int.class));
+                                                                            return Command.SINGLE_SUCCESS;
+                                                                        }))))))));
         this.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, commands -> {
             commands.registrar().register(hscommand.build());
         });
