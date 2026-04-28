@@ -27,6 +27,9 @@ jobs:
         id: git
         run: echo "GIT_COMMIT=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
 
+      - name: gradlewの実行権限付与
+        run: chmod +x ./gradlew
+
       - name: ビルド
         run: ./gradlew :paperfolia:v26_1_2:build -PgitCommit=${GIT_COMMIT}
 
